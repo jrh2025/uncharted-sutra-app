@@ -440,7 +440,7 @@ const ThoughtCabinet = React.memo(() => {
 
 // 5. 因果劇場 (KarmicTheater) - v8 多元時事
 const KarmicTheater = () => {
-    const { applyEffects, playerState, addNewThought } = usePlayerState();
+    const { apiKey, applyEffects, playerState, addNewThought } = usePlayerState();
     const [scenario, setScenario] = useState(null);
     const [feedback, setFeedback] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -449,7 +449,6 @@ const KarmicTheater = () => {
     const [recentThemes, setRecentThemes] = useState([]);
 
     const fetchNewScenario = useCallback(async () => {
-        const apiKey = ""; // **核心修正：預覽環境直接使用空字串**
         if(!playerState) return;
 
         setLoading(true);
@@ -493,7 +492,6 @@ const KarmicTheater = () => {
 
         玩家當前狀態（供參考）：貪：${playerState.karma.greed}, 瞋：${playerState.karma.hatred}, 癡：${playerState.karma.delusion}, 階位：${playerState.bodhisattvaPath.stage}。`;
         
-        // **核心修正：重新加入 responseSchema**
         const schema = {
             type: "OBJECT",
             properties: {
@@ -563,13 +561,12 @@ const KarmicTheater = () => {
         } finally {
             setLoading(false);
         }
-    }, [playerState, recentThemes]);
+    }, [playerState, recentThemes, apiKey]);
 
     const generateNewThought = useCallback(async (context) => {
-        const apiKey = ""; // **核心修正：預覽環境直接使用空字串**
+        if (!apiKey) return;
         const prompt = `基於以下情境和玩家的選擇，生成一個新的「思想」。這個思想應該是一個哲學概念、世界觀或偏見。請提供思想的名稱、描述（它是如何形成的）和一個遊戲內效果。嚴格遵循JSON格式輸出，無額外文字。情境：${context.scenario} 選擇：${context.choiceText}`;
         
-        // **核心修正：重新加入 responseSchema**
         const schema = {
             type: "OBJECT",
             properties: {
@@ -604,7 +601,7 @@ const KarmicTheater = () => {
                 }
             }
         } catch (err) { console.error("生成思想失敗:", err); }
-    }, [addNewThought]);
+    }, [addNewThought, apiKey]);
 
     const handleChoice = (choice) => {
         applyEffects(choice.effects);
@@ -631,9 +628,10 @@ const KarmicTheater = () => {
                     {!scenario && !loading && !feedback && (
                         <div className="text-center flex flex-col items-center justify-center h-full">
                             <p className="text-gray-400 mb-4">諸法因緣生，諸法因緣滅。</p>
-                            <button onClick={fetchNewScenario} className="bg-teal-500/80 text-white px-6 py-3 rounded-lg hover:bg-teal-400/90 transition-colors flex items-center justify-center text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled={!playerState}>
+                            <button onClick={fetchNewScenario} className="bg-teal-500/80 text-white px-6 py-3 rounded-lg hover:bg-teal-400/90 transition-colors flex items-center justify-center text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled={!apiKey || !playerState}>
                                 <SparklesIcon className="mr-2" /> 尋求新的因緣
                             </button>
+                            {!apiKey && <p className="text-xs text-yellow-400 mt-2">請先設定您的 API 金鑰</p>}
                         </div>
                     )}
 
@@ -756,7 +754,7 @@ const BackgroundMusicPlayer = () => {
 
 // --- 輪迴轉生元件 ---
 const ReincarnationManager = () => {
-    const { reincarnate, setPlayerState } = usePlayerState();
+    const { reincarnate, setPlayerState, apiKey } = usePlayerState();
     const [confirmationVisible, setConfirmationVisible] = useState(false);
     const [rebirthInfo, setRebirthInfo] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -770,7 +768,6 @@ const ReincarnationManager = () => {
         setLoading(true);
 
         const newInitialState = reincarnate();
-        const apiKey = ""; // **核心修正：預覽環境直接使用空字串**
 
         const prompt = `你是一位充滿佛學智慧的遊戲敘事設計師。玩家即將開始一段新的人生旅程，請根據其新的初始狀態，為他撰寫一段簡短（約2-3句話）而富有詩意的「轉生開示」。這段話要能反映出他的先天條件與潛在挑戰。
 
@@ -785,6 +782,7 @@ const ReincarnationManager = () => {
         請直接輸出開示的文字，不要有任何額外的標籤或解釋。`;
 
         try {
+            if (!apiKey) throw new Error("API 金鑰未設定");
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
             const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -855,11 +853,99 @@ const ReincarnationManager = () => {
     );
 };
 
+// --- API 金鑰管理員 ---
+const ApiKeyManager = () => {
+    const { apiKey, setApiKey, setPlayerState, setShowWelcomeModal } = usePlayerState();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [inputKey, setInputKey] = useState("");
+
+    useEffect(() => {
+        if (!apiKey) {
+            const timer = setTimeout(() => setIsModalOpen(true), 1500); // 延遲彈出
+            return () => clearTimeout(timer);
+        }
+    }, [apiKey]);
+
+    const handleSaveKey = () => {
+        const trimmedKey = inputKey.trim();
+        if (trimmedKey) {
+            localStorage.setItem('gemini_api_key', trimmedKey);
+            setApiKey(trimmedKey);
+            
+            const savedState = localStorage.getItem(`sutra_save_${trimmedKey}`);
+            if (savedState) {
+                try {
+                    const parsedState = JSON.parse(savedState);
+                    parsedState.loginCount = (parsedState.loginCount || 1); // 讀取時不增加
+                    setPlayerState(parsedState);
+                } catch (e) {
+                    setPlayerState(getInitialPlayerState());
+                }
+            } else {
+                setPlayerState(getInitialPlayerState());
+            }
+            
+            setShowWelcomeModal(true);
+            setIsModalOpen(false);
+        }
+    };
+
+    const handleClearKey = () => {
+        const currentKey = localStorage.getItem('gemini_api_key');
+        if(currentKey) {
+            localStorage.removeItem(`sutra_save_${currentKey}`);
+        }
+        localStorage.removeItem('gemini_api_key');
+        setApiKey(null);
+        setInputKey("");
+        setPlayerState(getInitialPlayerState());
+        setIsModalOpen(true);
+    };
+
+    return (
+        <>
+            <button
+                onClick={() => setIsModalOpen(true)}
+                className="fixed bottom-4 right-4 bg-gray-800/70 text-white p-3 rounded-full shadow-lg hover:bg-gray-700 transition-colors backdrop-blur-sm z-50"
+                aria-label="設定 API 金鑰"
+            >
+                <KeyRoundIcon />
+            </button>
+
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                    <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-teal-500/20">
+                        <h3 className="text-2xl font-light text-teal-200 mb-4">設定您的 API 金鑰</h3>
+                        <p className="text-gray-400 mb-4 text-sm">
+                            此應用程式需要 Google Gemini API 金鑰才能運作。您的金鑰將僅儲存在您的瀏覽器中，不會被分享。
+                        </p>
+                        <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:text-teal-300 underline mb-6 block">
+                            點此免費取得您的 Google Gemini API 金鑰
+                        </a>
+                        <input
+                            type="password"
+                            value={inputKey}
+                            onChange={(e) => setInputKey(e.target.value)}
+                            placeholder="在此貼上您的 API 金鑰"
+                            className="w-full p-3 rounded-lg bg-gray-900 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 mb-4"
+                        />
+                        <div className="flex flex-col sm:flex-row justify-center gap-4">
+                            <button onClick={handleSaveKey} className="px-6 py-3 rounded-lg bg-teal-600 hover:bg-teal-500 transition-colors flex-1">儲存金鑰</button>
+                            {apiKey && <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 rounded-lg bg-gray-600 hover:bg-gray-500 transition-colors flex-1">關閉</button>}
+                        </div>
+                         {apiKey && <button onClick={handleClearKey} className="text-xs text-gray-500 hover:text-gray-400 mt-4">清除已儲存的金鑰</button>}
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
+
 // **歡迎訊息元件**
 const WelcomeModal = () => {
-    const { playerState, showWelcomeModal, setShowWelcomeModal } = usePlayerState();
+    const { playerState, showWelcomeModal, setShowWelcomeModal, apiKey } = usePlayerState();
     
-    if (!showWelcomeModal || !playerState) return null;
+    if (!showWelcomeModal || !playerState || !apiKey) return null;
 
     const isNewUser = playerState.loginCount <= 1;
 
@@ -873,7 +959,7 @@ const WelcomeModal = () => {
                             <p>歡迎來到《未書之經》，這是一場關於內在探索的互動冥想。這裡沒有對錯，沒有勝負，只有您與您內心的對話。</p>
                             <p>在「因果劇場」中，您將面臨由 AI 生成的無數情境。請不必揣測系統的偏好，只需**全然地遵從您的本心**，做出最真實的選擇。您的每個起心動念，都將編織出獨一無二的心靈曼陀羅。</p>
                             <p className="text-sm text-gray-400 border-t border-gray-700 pt-3 mt-4">
-                                **預覽環境須知**：您目前在預覽環境中，無需設定 API 金鑰即可體驗。所有進度將儲存在您本機的瀏覽器中。
+                                **金鑰安全須知**：您提供的 API 金鑰將僅儲存在您本機的瀏覽器中，我們絕不會上傳或紀錄它。這是您的個人旅程，您的憑證將完全由您自己保管。
                             </p>
                         </div>
                     </>
@@ -922,7 +1008,7 @@ function AppContent() {
             <div className="p-4 sm:p-8 backdrop-blur-md bg-black/30 min-h-screen">
                 <header className="text-center mb-8">
                     <h1 className="text-4xl sm:text-5xl font-extralight text-teal-200 tracking-wider">未書之經</h1>
-                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v14 (預覽修正)</p>
+                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v15 (部署最終版)</p>
                 </header>
                 <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
                     <div className="lg:col-span-2 space-y-6">
@@ -944,8 +1030,7 @@ function AppContent() {
                 </footer>
             </div>
             <BackgroundMusicPlayer />
-            {/* 預覽環境中不顯示 API 金鑰管理器 */}
-            {/* <ApiKeyManager /> */}
+            <ApiKeyManager />
         </div>
     );
 }
