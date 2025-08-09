@@ -107,32 +107,53 @@ const LoadingAnimation = () => {
 // --- 遊戲狀態管理 (Context API) ---
 const GameStateContext = createContext();
 
-const initialPlayerState = {
-    skandhas: { rupa: 80, vedana: 50, samjna: 60, samskara: 40, vijnana: 50 },
-    karma: { greed: 60, hatred: 30, delusion: 50 },
-    bodhisattvaPath: { stage: '十信位', progress: 3 },
+const getInitialPlayerState = () => ({
+    skandhas: { rupa: 70, vedana: 50, samjna: 50, samskara: 40, vijnana: 50 },
+    karma: { greed: 50, hatred: 40, delusion: 60 },
+    bodhisattvaPath: { stage: '十信位', progress: 0 },
     thoughts: {
-        equipped: [
-            { id: 2, name: '復仇式正義', internalizing: false, progress: 100, effect: '解鎖「威嚇」對話選項', description: '在一次衝突中選擇以暴制暴後形成。', conflictsWith: [4] },
-        ],
-        available: [
-            { id: 3, name: '萬法無常', internalizing: false, progress: 0, effect: '內化中：暫時降低所有治療物品的效果', description: '閱讀一本古經後獲得。' },
-            { id: 4, name: '對敵人的慈悲', internalizing: false, progress: 0, effect: '內化中：面對敵人時，攻擊力暫時下降', description: '選擇寬恕一個曾經傷害你的人後獲得。', conflictsWith: [2] },
-        ],
+        equipped: [],
+        available: [],
         synthesized: []
-    }
-};
+    },
+    loginCount: 1
+});
 
 const PlayerStateProvider = ({ children }) => {
-    const [playerState, setPlayerState] = useState(initialPlayerState);
+    const [playerState, setPlayerState] = useState(null);
     const [apiKey, setApiKey] = useState(null);
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
     useEffect(() => {
         const storedKey = localStorage.getItem('gemini_api_key');
         if (storedKey) {
             setApiKey(storedKey);
+            const savedStateJSON = localStorage.getItem(`sutra_save_${storedKey}`);
+            if (savedStateJSON) {
+                try {
+                    const savedState = JSON.parse(savedStateJSON);
+                    savedState.loginCount = (savedState.loginCount || 1) + 1;
+                    setPlayerState(savedState);
+                    setShowWelcomeModal(true);
+                } catch (e) {
+                    console.error("解析存檔失敗:", e);
+                    setPlayerState(getInitialPlayerState());
+                    setShowWelcomeModal(true);
+                }
+            } else {
+                setPlayerState(getInitialPlayerState());
+                setShowWelcomeModal(true);
+            }
+        } else {
+            setPlayerState(getInitialPlayerState());
         }
     }, []);
+
+    useEffect(() => {
+        if (playerState && apiKey) {
+            localStorage.setItem(`sutra_save_${apiKey}`, JSON.stringify(playerState));
+        }
+    }, [playerState, apiKey]);
 
     const applyEffects = useCallback((effects) => {
         if (!effects) return;
@@ -166,7 +187,7 @@ const PlayerStateProvider = ({ children }) => {
     const addNewThought = useCallback((thought) => {
         setPlayerState(prev => {
             const newState = JSON.parse(JSON.stringify(prev));
-            const newId = Math.max(0, ...newState.thoughts.available.map(t => t.id), ...newState.thoughts.equipped.map(t => t.id)) + 1;
+            const newId = Math.max(0, ...(newState.thoughts.available.map(t => t.id)), ...(newState.thoughts.equipped.map(t => t.id))) + 1;
             newState.thoughts.available.push({ ...thought, id: newId });
             return newState;
         });
@@ -176,7 +197,7 @@ const PlayerStateProvider = ({ children }) => {
         setPlayerState(prev => {
             const newState = JSON.parse(JSON.stringify(prev));
             newState.thoughts.equipped = newState.thoughts.equipped.filter(t => t.id !== thoughtId1 && t.id !== thoughtId2);
-            const newId = Math.max(0, ...newState.thoughts.available.map(t => t.id), ...newState.thoughts.equipped.map(t => t.id)) + 1;
+            const newId = Math.max(0, ...(newState.thoughts.available.map(t => t.id)), ...(newState.thoughts.equipped.map(t => t.id))) + 1;
             const synthesizedThought = { ...newThought, id: newId, internalizing: false, progress: 100 };
             newState.thoughts.equipped.push(synthesizedThought);
             newState.thoughts.synthesized.push({ from: [thoughtId1, thoughtId2], to: newId });
@@ -202,15 +223,15 @@ const PlayerStateProvider = ({ children }) => {
             ? { ...prevState.thoughts.equipped[Math.floor(Math.random() * prevState.thoughts.equipped.length)], internalizing: false, progress: 0 }
             : null;
         const newInitialState = {
+            ...getInitialPlayerState(),
             skandhas: { rupa: Math.round(newSkandhas.rupa), vedana: Math.round(newSkandhas.vedana), samjna: Math.round(newSkandhas.samjna), samskara: Math.round(newSkandhas.samskara), vijnana: Math.round(newSkandhas.vijnana) },
             karma: { greed: Math.round(newKarma.greed), hatred: Math.round(newKarma.hatred), delusion: Math.round(newKarma.delusion) },
-            bodhisattvaPath: { stage: '十信位', progress: 0 },
-            thoughts: { equipped: [], available: carriedOverThought ? [carriedOverThought] : [], synthesized: [] }
+            thoughts: { equipped: [], available: carriedOverThought ? [carriedOverThought] : [], synthesized: [] },
         };
         return newInitialState;
     }, [playerState]);
 
-    const value = useMemo(() => ({ playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate }), [playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate]);
+    const value = useMemo(() => ({ playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal }), [playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal]);
 
     return <GameStateContext.Provider value={value}>{children}</GameStateContext.Provider>;
 };
@@ -220,6 +241,7 @@ const usePlayerState = () => useContext(GameStateContext);
 // --- UI 元件 (無重大變更的元件將被簡化) ---
 const MandalaUI = React.memo(() => {
     const { playerState } = usePlayerState();
+    if (!playerState) return null;
     const { rupa, vedana, samjna, samskara, vijnana } = playerState.skandhas;
     const { greed, hatred, delusion } = playerState.karma;
     const size = 320;
@@ -274,6 +296,7 @@ const MandalaUI = React.memo(() => {
 });
 const KarmaDashboard = React.memo(() => {
     const { playerState } = usePlayerState();
+    if (!playerState) return null;
     const { greed, hatred, delusion } = playerState.karma;
     const getPath = () => {
         const totalPoison = greed + hatred + delusion;
@@ -312,6 +335,7 @@ const KarmaDashboard = React.memo(() => {
 });
 const BodhisattvaPath = React.memo(() => {
     const { playerState } = usePlayerState();
+    if (!playerState) return null;
     const { stage, progress } = playerState.bodhisattvaPath;
     const stages = ['十信位', '十住位', '十行位', '十迴向位', '十地位'];
     const currentStageIndex = stages.indexOf(stage);
@@ -332,6 +356,7 @@ const BodhisattvaPath = React.memo(() => {
 // --- 思想櫥櫃 (v4) ---
 const ThoughtCabinet = React.memo(() => {
     const { playerState, equipThought, synthesizeThoughts } = usePlayerState();
+    if (!playerState) return null;
     const { equipped, available } = playerState.thoughts;
 
     const findConflicts = () => {
@@ -415,7 +440,7 @@ const ThoughtCabinet = React.memo(() => {
 
 // 5. 因果劇場 (KarmicTheater) - v8 多元時事
 const KarmicTheater = () => {
-    const { apiKey, applyEffects, playerState, addNewThought } = usePlayerState();
+    const { applyEffects, playerState, addNewThought } = usePlayerState();
     const [scenario, setScenario] = useState(null);
     const [feedback, setFeedback] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -424,10 +449,9 @@ const KarmicTheater = () => {
     const [recentThemes, setRecentThemes] = useState([]);
 
     const fetchNewScenario = useCallback(async () => {
-        if (!apiKey) {
-            setError("請先設定您的 API 金鑰。");
-            return;
-        }
+        const apiKey = ""; // **核心修正：預覽環境直接使用空字串**
+        if(!playerState) return;
+
         setLoading(true);
         setError(null);
         setScenario(null);
@@ -469,6 +493,7 @@ const KarmicTheater = () => {
 
         玩家當前狀態（供參考）：貪：${playerState.karma.greed}, 瞋：${playerState.karma.hatred}, 癡：${playerState.karma.delusion}, 階位：${playerState.bodhisattvaPath.stage}。`;
         
+        // **核心修正：重新加入 responseSchema**
         const schema = {
             type: "OBJECT",
             properties: {
@@ -512,26 +537,39 @@ const KarmicTheater = () => {
 
         try {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
+            const payload = { 
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) throw new Error(`API 請求失敗，狀態碼：${response.status}`);
             const result = await response.json();
+            
             if (result.candidates && result.candidates.length > 0) {
                 const jsonText = result.candidates[0].content.parts[0].text;
-                setScenario(JSON.parse(jsonText));
+                try {
+                    setScenario(JSON.parse(jsonText));
+                } catch(e) {
+                    console.error("解析AI回應的JSON失敗:", e, "原始文字:", jsonText);
+                    throw new Error("AI 回應格式錯誤。");
+                }
             } else { throw new Error("從API收到的回應無效。"); }
         } catch (err) {
             console.error(err);
-            setError("無法生成新的因緣，請稍後再試。可能是 API 金鑰有誤。");
+            setError("無法生成新的因緣，請稍後再試。可能是 API 金鑰有誤或模型暫時無法回應。");
         } finally {
             setLoading(false);
         }
-    }, [playerState, recentThemes, apiKey]);
+    }, [playerState, recentThemes]);
 
     const generateNewThought = useCallback(async (context) => {
-        if (!apiKey) return;
+        const apiKey = ""; // **核心修正：預覽環境直接使用空字串**
         const prompt = `基於以下情境和玩家的選擇，生成一個新的「思想」。這個思想應該是一個哲學概念、世界觀或偏見。請提供思想的名稱、描述（它是如何形成的）和一個遊戲內效果。嚴格遵循JSON格式輸出，無額外文字。情境：${context.scenario} 選擇：${context.choiceText}`;
         
+        // **核心修正：重新加入 responseSchema**
         const schema = {
             type: "OBJECT",
             properties: {
@@ -542,21 +580,31 @@ const KarmicTheater = () => {
             },
             required: ["name", "description", "effect"],
         };
-        
+
         try {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
+            const payload = { 
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) return;
             const result = await response.json();
             if (result.candidates && result.candidates.length > 0) {
                 const jsonText = result.candidates[0].content.parts[0].text;
-                const newThought = JSON.parse(jsonText);
-                addNewThought(newThought);
-                setNewThoughtFeedback(`一個新的思想已在你心中萌芽：「${newThought.name}」`);
+                 try {
+                    const newThought = JSON.parse(jsonText);
+                    addNewThought(newThought);
+                    setNewThoughtFeedback(`一個新的思想已在你心中萌芽：「${newThought.name}」`);
+                } catch(e) {
+                    console.error("解析AI回應的JSON失敗:", e, "原始文字:", jsonText);
+                }
             }
         } catch (err) { console.error("生成思想失敗:", err); }
-    }, [addNewThought, apiKey]);
+    }, [addNewThought]);
 
     const handleChoice = (choice) => {
         applyEffects(choice.effects);
@@ -583,10 +631,9 @@ const KarmicTheater = () => {
                     {!scenario && !loading && !feedback && (
                         <div className="text-center flex flex-col items-center justify-center h-full">
                             <p className="text-gray-400 mb-4">諸法因緣生，諸法因緣滅。</p>
-                            <button onClick={fetchNewScenario} className="bg-teal-500/80 text-white px-6 py-3 rounded-lg hover:bg-teal-400/90 transition-colors flex items-center justify-center text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled={!apiKey}>
+                            <button onClick={fetchNewScenario} className="bg-teal-500/80 text-white px-6 py-3 rounded-lg hover:bg-teal-400/90 transition-colors flex items-center justify-center text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled={!playerState}>
                                 <SparklesIcon className="mr-2" /> 尋求新的因緣
                             </button>
-                            {!apiKey && <p className="text-xs text-yellow-400 mt-2">請先點擊右下角設定 API 金鑰</p>}
                         </div>
                     )}
 
@@ -597,7 +644,7 @@ const KarmicTheater = () => {
                         <div className="w-full">
                             <p className="text-gray-300 mb-4 ">{scenario.scenario}</p>
                             <div className="space-y-3">
-                                {scenario.choices.map((choice, index) => (
+                                {Array.isArray(scenario.choices) && scenario.choices.map((choice, index) => (
                                     <button key={index} onClick={() => handleChoice(choice)} className="w-full text-left bg-gray-700/60 text-white p-3 rounded-lg hover:bg-cyan-600/70 transition-colors">
                                         {choice.text}
                                     </button>
@@ -709,7 +756,7 @@ const BackgroundMusicPlayer = () => {
 
 // --- 輪迴轉生元件 ---
 const ReincarnationManager = () => {
-    const { reincarnate, setPlayerState, apiKey } = usePlayerState();
+    const { reincarnate, setPlayerState } = usePlayerState();
     const [confirmationVisible, setConfirmationVisible] = useState(false);
     const [rebirthInfo, setRebirthInfo] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -723,6 +770,7 @@ const ReincarnationManager = () => {
         setLoading(true);
 
         const newInitialState = reincarnate();
+        const apiKey = ""; // **核心修正：預覽環境直接使用空字串**
 
         const prompt = `你是一位充滿佛學智慧的遊戲敘事設計師。玩家即將開始一段新的人生旅程，請根據其新的初始狀態，為他撰寫一段簡短（約2-3句話）而富有詩意的「轉生開示」。這段話要能反映出他的先天條件與潛在挑戰。
 
@@ -737,14 +785,13 @@ const ReincarnationManager = () => {
         請直接輸出開示的文字，不要有任何額外的標籤或解釋。`;
 
         try {
-            if (!apiKey) throw new Error("API 金鑰未設定");
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
             const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
             
             let rebirthMessage = "此生已盡，業風吹送到新的旅程。願你保持覺照，善用此身。";
-            if (result.candidates && result.candidates.length > 0) {
+            if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
                 rebirthMessage = result.candidates[0].content.parts[0].text;
             }
 
@@ -808,104 +855,97 @@ const ReincarnationManager = () => {
     );
 };
 
-// --- 新增：API 金鑰管理員 ---
-const ApiKeyManager = () => {
-    const { apiKey, setApiKey } = usePlayerState();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [inputKey, setInputKey] = useState("");
+// **歡迎訊息元件**
+const WelcomeModal = () => {
+    const { playerState, showWelcomeModal, setShowWelcomeModal } = usePlayerState();
+    
+    if (!showWelcomeModal || !playerState) return null;
 
-    useEffect(() => {
-        if (!apiKey) {
-            setIsModalOpen(true);
-        }
-    }, [apiKey]);
-
-    const handleSaveKey = () => {
-        if (inputKey.trim()) {
-            localStorage.setItem('gemini_api_key', inputKey.trim());
-            setApiKey(inputKey.trim());
-            setIsModalOpen(false);
-        }
-    };
-
-    const handleClearKey = () => {
-        localStorage.removeItem('gemini_api_key');
-        setApiKey(null);
-        setInputKey("");
-        setIsModalOpen(true);
-    };
+    const isNewUser = playerState.loginCount <= 1;
 
     return (
-        <>
-            <button
-                onClick={() => setIsModalOpen(true)}
-                className="fixed bottom-4 right-4 bg-gray-800/70 text-white p-3 rounded-full shadow-lg hover:bg-gray-700 transition-colors backdrop-blur-sm z-50"
-                aria-label="設定 API 金鑰"
-            >
-                <KeyRoundIcon />
-            </button>
-
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                    <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-teal-500/20">
-                        <h3 className="text-2xl font-light text-teal-200 mb-4">設定您的 API 金鑰</h3>
-                        <p className="text-gray-400 mb-4 text-sm">
-                            此應用程式需要 Google Gemini API 金鑰才能運作。您的金鑰將僅儲存在您的瀏覽器中，不會被分享。
-                        </p>
-                        <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:text-teal-300 underline mb-6 block">
-                            點此取得您的 Google Gemini API 金鑰
-                        </a>
-                        <input
-                            type="password"
-                            value={inputKey}
-                            onChange={(e) => setInputKey(e.target.value)}
-                            placeholder="在此貼上您的 API 金鑰"
-                            className="w-full p-3 rounded-lg bg-gray-900 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 mb-4"
-                        />
-                        <div className="flex flex-col sm:flex-row justify-center gap-4">
-                            <button onClick={handleSaveKey} className="px-6 py-3 rounded-lg bg-teal-600 hover:bg-teal-500 transition-colors flex-1">儲存金鑰</button>
-                            {apiKey && <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 rounded-lg bg-gray-600 hover:bg-gray-500 transition-colors flex-1">關閉</button>}
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-lg w-full text-left border border-teal-500/20 mx-4">
+                {isNewUser ? (
+                    <>
+                        <h3 className="text-2xl font-light text-teal-200 mb-4">初次見面，旅人</h3>
+                        <div className="text-gray-300 space-y-3">
+                            <p>歡迎來到《未書之經》，這是一場關於內在探索的互動冥想。這裡沒有對錯，沒有勝負，只有您與您內心的對話。</p>
+                            <p>在「因果劇場」中，您將面臨由 AI 生成的無數情境。請不必揣測系統的偏好，只需**全然地遵從您的本心**，做出最真實的選擇。您的每個起心動念，都將編織出獨一無二的心靈曼陀羅。</p>
+                            <p className="text-sm text-gray-400 border-t border-gray-700 pt-3 mt-4">
+                                **預覽環境須知**：您目前在預覽環境中，無需設定 API 金鑰即可體驗。所有進度將儲存在您本機的瀏覽器中。
+                            </p>
                         </div>
-                         {apiKey && <button onClick={handleClearKey} className="text-xs text-gray-500 hover:text-gray-400 mt-4">清除已儲存的金鑰</button>}
-                    </div>
+                    </>
+                ) : (
+                    <>
+                        <h3 className="text-2xl font-light text-teal-200 mb-4">歡迎回來，旅人</h3>
+                        <div className="text-gray-300 space-y-3">
+                            <p>這是您第 <span className="font-bold text-teal-300">{playerState.loginCount}</span> 次回到這裡，繼續書寫您這部未完的經文。</p>
+                            <p>願您依然記得，這趟旅程的唯一準則，便是**全然地遵從您的本心**。放下所有預設，讓每一次選擇都成為一次清澈的觀照。</p>
+                        </div>
+                    </>
+                )}
+                <div className="mt-6 text-right">
+                    <button onClick={() => setShowWelcomeModal(false)} className="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 transition-colors">繼續旅程</button>
                 </div>
-            )}
-        </>
+            </div>
+        </div>
     );
 };
+
 
 // --- 主應用程式 ---
 export default function App() {
     return (
         <PlayerStateProvider>
-            <div className="bg-gray-900 text-white min-h-screen font-sans bg-cover bg-fixed" style={{backgroundImage: 'url(https://placehold.co/1920x1080/0a101f/1e293b.png?text=.)'}}>
-                <div className="p-4 sm:p-8 backdrop-blur-md bg-black/30 min-h-screen">
-                    <header className="text-center mb-8">
-                        <h1 className="text-4xl sm:text-5xl font-extralight text-teal-200 tracking-wider">未書之經</h1>
-                        <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v10 (使用者 API 金鑰)</p>
-                    </header>
-                    <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                        <div className="lg:col-span-2 space-y-6">
-                            <BodhisattvaPath />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <KarmaDashboard />
-                                <ThoughtCabinet />
-                            </div>
-                        </div>
-                        <div className="lg:col-span-1 flex flex-col space-y-6">
-                            <MandalaUI />
-                            <KarmicTheater />
-                        </div>
-                    </main>
-                    <footer className="text-center mt-12 text-gray-500 text-sm">
-                        <p>此原型基於《未書之經：一場穿越業與空的遊戲設計框架》文件實現。</p>
-                        <p>「因果劇場」與「思想櫥櫃」由生成式AI驅動，每次體驗皆不相同。</p>
-                        <ReincarnationManager />
-                    </footer>
-                </div>
-                <BackgroundMusicPlayer />
-                <ApiKeyManager />
-            </div>
+            <AppContent />
         </PlayerStateProvider>
+    );
+}
+
+// 將主要內容分離，以便 context 能正常運作
+function AppContent() {
+    const { playerState } = usePlayerState();
+
+    if (!playerState) {
+        return (
+            <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+                <LoadingAnimation />
+            </div>
+        );
+    }
+    
+    return (
+        <div className="bg-gray-900 text-white min-h-screen font-sans bg-cover bg-fixed" style={{backgroundImage: 'url(https://placehold.co/1920x1080/0a101f/1e293b.png?text=.)'}}>
+            <WelcomeModal />
+            <div className="p-4 sm:p-8 backdrop-blur-md bg-black/30 min-h-screen">
+                <header className="text-center mb-8">
+                    <h1 className="text-4xl sm:text-5xl font-extralight text-teal-200 tracking-wider">未書之經</h1>
+                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v14 (預覽修正)</p>
+                </header>
+                <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                    <div className="lg:col-span-2 space-y-6">
+                        <BodhisattvaPath />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <KarmaDashboard />
+                            <ThoughtCabinet />
+                        </div>
+                    </div>
+                    <div className="lg:col-span-1 flex flex-col space-y-6">
+                        <MandalaUI />
+                        <KarmicTheater />
+                    </div>
+                </main>
+                <footer className="text-center mt-12 text-gray-500 text-sm">
+                    <p>此原型基於《未書之經：一場穿越業與空的遊戲設計框架》文件實現。</p>
+                    <p>「因果劇場」與「思想櫥櫃」由生成式AI驅動，每次體驗皆不相同。</p>
+                    <ReincarnationManager />
+                </footer>
+            </div>
+            <BackgroundMusicPlayer />
+            {/* 預覽環境中不顯示 API 金鑰管理器 */}
+            {/* <ApiKeyManager /> */}
+        </div>
     );
 }
