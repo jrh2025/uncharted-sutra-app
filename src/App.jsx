@@ -108,7 +108,6 @@ const LoadingAnimation = () => {
 // --- 遊戲狀態管理 (Context API) ---
 const GameStateContext = createContext();
 
-// **核心改動：菩薩道階位資料庫**
 const BODHISATTVA_PATH_CONFIG = [
     { name: '十信位', focus: '建立信心與正見', subStages: ['信心', '念心', '精進心', '慧心', '定心', '不退心', '護法心', '迴向心', '戒心', '願心'], progressPerAction: 15 },
     { name: '十住位', focus: '安住於菩提心', subStages: ['發心住', '治地住', '修行住', '生貴住', '方便具足住', '正心住', '不退住', '童真住', '法王子住', '灌頂住'], progressPerAction: 10 },
@@ -140,40 +139,32 @@ const getInitialPlayerState = () => ({
 
 const PlayerStateProvider = ({ children }) => {
     const [playerState, setPlayerState] = useState(null);
-    const [apiKey, setApiKey] = useState(null);
+    const [apiKey, setApiKey] = useState(""); // **核心修正：初始化為空字串**
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [showProgressionModal, setShowProgressionModal] = useState(null);
 
     useEffect(() => {
-        const storedKey = localStorage.getItem('gemini_api_key');
-        if (storedKey) {
-            setApiKey(storedKey);
-            const savedStateJSON = localStorage.getItem(`sutra_save_${storedKey}`);
-            if (savedStateJSON) {
-                try {
-                    const savedState = JSON.parse(savedStateJSON);
-                    savedState.loginCount = (savedState.loginCount || 1) + 1;
-                    setPlayerState(savedState);
-                    if (savedState.playerName) {
-                        setShowWelcomeModal(true);
-                    }
-                } catch (e) {
-                    console.error("解析存檔失敗:", e);
-                    setPlayerState(getInitialPlayerState());
-                }
-            } else {
+        // **核心修正：簡化啟動邏輯，專為預覽環境設計**
+        const savedStateJSON = localStorage.getItem('sutra_save_local_preview');
+        if (savedStateJSON) {
+            try {
+                const savedState = JSON.parse(savedStateJSON);
+                savedState.loginCount = (savedState.loginCount || 1) + 1;
+                setPlayerState(savedState);
+            } catch (e) {
                 setPlayerState(getInitialPlayerState());
             }
         } else {
             setPlayerState(getInitialPlayerState());
         }
+        setShowWelcomeModal(true);
     }, []);
 
     useEffect(() => {
-        if (playerState && apiKey) {
-            localStorage.setItem(`sutra_save_${apiKey}`, JSON.stringify(playerState));
+        if (playerState) {
+            localStorage.setItem('sutra_save_local_preview', JSON.stringify(playerState));
         }
-    }, [playerState, apiKey]);
+    }, [playerState]);
 
     const setPlayerName = useCallback((name) => {
         setPlayerState(prev => ({ ...prev, playerName: name }));
@@ -186,7 +177,6 @@ const PlayerStateProvider = ({ children }) => {
             const { stageIndex, subStageIndex } = bodhisattvaPath;
             const stageConfig = BODHISATTVA_PATH_CONFIG[stageIndex];
             
-            // **檢查降級**
             let didRegress = false;
             if (stageIndex > 0) {
                 const avgPoison = (karma.greed + karma.hatred + karma.delusion) / 3;
@@ -205,7 +195,6 @@ const PlayerStateProvider = ({ children }) => {
                 }
             }
 
-            // **檢查晉升**
             if (!didRegress && bodhisattvaPath.progress >= 100) {
                 if (subStageIndex < stageConfig.subStages.length - 1) {
                     newState.bodhisattvaPath.subStageIndex += 1;
@@ -219,7 +208,7 @@ const PlayerStateProvider = ({ children }) => {
                 const newStageIndex = newState.bodhisattvaPath.stageIndex;
                 const newSubStageIndex = newState.bodhisattvaPath.subStageIndex;
 
-                if(newStageIndex === STAGES.length - 1) { // 妙覺
+                if(newStageIndex === STAGES.length - 1) {
                     newState.endGame = 'pending';
                 } else {
                     setShowProgressionModal({ from: `${stageConfig.name} - ${stageConfig.subStages[subStageIndex]}`, to: `${BODHISATTVA_PATH_CONFIG[newStageIndex].name} - ${BODHISATTVA_PATH_CONFIG[newStageIndex].subStages[newSubStageIndex]}`, type: 'promotion' });
@@ -234,7 +223,7 @@ const PlayerStateProvider = ({ children }) => {
         if (!effects) return;
         setPlayerState(prev => {
             const newState = JSON.parse(JSON.stringify(prev));
-            const { bodhisattvaPath, karma } = newState;
+            const { bodhisattvaPath } = newState;
             const stageConfig = BODHISATTVA_PATH_CONFIG[bodhisattvaPath.stageIndex];
             let progressPoints = 0;
 
@@ -243,18 +232,11 @@ const PlayerStateProvider = ({ children }) => {
                 const hatredChange = effects.karma.hatred || 0;
                 const delusionChange = effects.karma.delusion || 0;
 
-                // 根據當前位階的修行重點，給予不同的進度加成
                 switch(bodhisattvaPath.stageIndex) {
-                    case 0: // 十信位 (慧)
-                        if (delusionChange < 0) progressPoints += Math.abs(delusionChange);
-                        break;
-                    case 2: // 十行位 (無瞋)
-                        if (hatredChange < 0) progressPoints += Math.abs(hatredChange) * 1.5;
-                        break;
-                    case 3: // 十迴向位 (無貪)
-                        if (greedChange < 0) progressPoints += Math.abs(greedChange) * 1.5;
-                        break;
-                    default: // 其他
+                    case 0: if (delusionChange < 0) progressPoints += Math.abs(delusionChange); break;
+                    case 2: if (hatredChange < 0) progressPoints += Math.abs(hatredChange) * 1.5; break;
+                    case 3: if (greedChange < 0) progressPoints += Math.abs(greedChange) * 1.5; break;
+                    default:
                         if (greedChange < 0) progressPoints += Math.abs(greedChange) * 0.5;
                         if (hatredChange < 0) progressPoints += Math.abs(hatredChange) * 0.5;
                         if (delusionChange < 0) progressPoints += Math.abs(delusionChange) * 0.5;
