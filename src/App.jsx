@@ -14,6 +14,7 @@ const Volume2Icon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" hei
 const VolumeXIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-volume-x"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>;
 const RefreshCwIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>;
 const KeyRoundIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-key-round"><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>;
+const Edit2Icon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit-2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>;
 
 
 // --- 加載動畫元件 ---
@@ -108,6 +109,7 @@ const LoadingAnimation = () => {
 const GameStateContext = createContext();
 
 const getInitialPlayerState = () => ({
+    playerName: null, // **新增：玩家名稱**
     skandhas: { rupa: 70, vedana: 50, samjna: 50, samskara: 40, vijnana: 50 },
     karma: { greed: 50, hatred: 40, delusion: 60 },
     bodhisattvaPath: { stage: '十信位', progress: 0 },
@@ -134,15 +136,15 @@ const PlayerStateProvider = ({ children }) => {
                     const savedState = JSON.parse(savedStateJSON);
                     savedState.loginCount = (savedState.loginCount || 1) + 1;
                     setPlayerState(savedState);
-                    setShowWelcomeModal(true);
+                    if (savedState.playerName) { // 如果已有名字，顯示回歸歡迎
+                        setShowWelcomeModal(true);
+                    }
                 } catch (e) {
                     console.error("解析存檔失敗:", e);
                     setPlayerState(getInitialPlayerState());
-                    setShowWelcomeModal(true);
                 }
             } else {
                 setPlayerState(getInitialPlayerState());
-                setShowWelcomeModal(true);
             }
         } else {
             setPlayerState(getInitialPlayerState());
@@ -154,6 +156,10 @@ const PlayerStateProvider = ({ children }) => {
             localStorage.setItem(`sutra_save_${apiKey}`, JSON.stringify(playerState));
         }
     }, [playerState, apiKey]);
+
+    const setPlayerName = useCallback((name) => {
+        setPlayerState(prev => ({ ...prev, playerName: name }));
+    }, []);
 
     const applyEffects = useCallback((effects) => {
         if (!effects) return;
@@ -224,6 +230,7 @@ const PlayerStateProvider = ({ children }) => {
             : null;
         const newInitialState = {
             ...getInitialPlayerState(),
+            playerName: null, // **新增：重啟人生時清空名字**
             skandhas: { rupa: Math.round(newSkandhas.rupa), vedana: Math.round(newSkandhas.vedana), samjna: Math.round(newSkandhas.samjna), samskara: Math.round(newSkandhas.samskara), vijnana: Math.round(newSkandhas.vijnana) },
             karma: { greed: Math.round(newKarma.greed), hatred: Math.round(newKarma.hatred), delusion: Math.round(newKarma.delusion) },
             thoughts: { equipped: [], available: carriedOverThought ? [carriedOverThought] : [], synthesized: [] },
@@ -231,7 +238,7 @@ const PlayerStateProvider = ({ children }) => {
         return newInitialState;
     }, [playerState]);
 
-    const value = useMemo(() => ({ playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal }), [playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal]);
+    const value = useMemo(() => ({ playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal, setPlayerName }), [playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal, setPlayerName]);
 
     return <GameStateContext.Provider value={value}>{children}</GameStateContext.Provider>;
 };
@@ -449,7 +456,10 @@ const KarmicTheater = () => {
     const [recentThemes, setRecentThemes] = useState([]);
 
     const fetchNewScenario = useCallback(async () => {
-        if(!playerState) return;
+        if(!playerState || !apiKey) {
+            setError("請先設定您的 API 金鑰。");
+            return;
+        }
 
         setLoading(true);
         setError(null);
@@ -487,6 +497,8 @@ const KarmicTheater = () => {
         具體方向：**${selectedTheme.detail}**
 
         請基於此主題，設計一個中性且具現實感的情境，可結合當代時事，避免過於戲劇化或善惡分明。提供3到4個反映不同心態的玩家選項。為每個選項，分析其動機，並評估其對佛教「三毒」（貪、瞋、癡）及「五蘊」的影響（數值在-15到+15之間）。
+
+        **重要**：如果情境適合，請在提問中自然地融入玩家的名字「${playerState.playerName || '旅人'}」。
 
         請務必嚴格遵循以下的JSON格式輸出，不得包含任何額外文字。
 
@@ -876,7 +888,7 @@ const ApiKeyManager = () => {
             if (savedState) {
                 try {
                     const parsedState = JSON.parse(savedState);
-                    parsedState.loginCount = (parsedState.loginCount || 1); // 讀取時不增加
+                    parsedState.loginCount = (parsedState.loginCount || 1); 
                     setPlayerState(parsedState);
                 } catch (e) {
                     setPlayerState(getInitialPlayerState());
@@ -980,6 +992,73 @@ const WelcomeModal = () => {
     );
 };
 
+// **新增：玩家命名元件**
+const NameManager = () => {
+    const { playerState, setPlayerName, setShowWelcomeModal } = usePlayerState();
+    const [name, setName] = useState("");
+    const [isEditing, setIsEditing] = useState(false);
+
+    const handleSave = () => {
+        if (name.trim()) {
+            setPlayerName(name.trim());
+            setIsEditing(false);
+            if (playerState.loginCount <= 1) { // 如果是新玩家，設定名字後顯示歡迎
+                setShowWelcomeModal(true);
+            }
+        }
+    };
+
+    if (playerState && !playerState.playerName && !isEditing) {
+        return (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
+                <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border border-teal-500/20 mx-4">
+                    <h3 className="text-2xl font-light text-teal-200 mb-4">請為您的旅程命名</h3>
+                    <p className="text-gray-400 mb-6 text-sm">
+                        這個名字將伴隨您行走於此世，AI 或許會以此稱呼您。
+                    </p>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="在此輸入您的名字"
+                        className="w-full p-3 rounded-lg bg-gray-900 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 mb-4"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    />
+                    <button onClick={handleSave} className="w-full px-6 py-3 rounded-lg bg-teal-600 hover:bg-teal-500 transition-colors">開始旅程</button>
+                </div>
+            </div>
+        );
+    }
+
+    if (isEditing) {
+         return (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border border-teal-500/20 mx-4">
+                    <h3 className="text-2xl font-light text-teal-200 mb-4">更改您的名字</h3>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder={playerState.playerName}
+                        className="w-full p-3 rounded-lg bg-gray-900 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 mb-4"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    />
+                    <div className="flex justify-center gap-4">
+                        <button onClick={() => setIsEditing(false)} className="px-6 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 transition-colors">取消</button>
+                        <button onClick={handleSave} className="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 transition-colors">儲存</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <button onClick={() => { setName(playerState.playerName); setIsEditing(true); }} className="ml-2 text-cyan-300/50 hover:text-cyan-300/90 transition-colors">
+            <Edit2Icon className="w-4 h-4" />
+        </button>
+    );
+};
+
 
 // --- 主應用程式 ---
 export default function App() {
@@ -1004,11 +1083,17 @@ function AppContent() {
     
     return (
         <div className="bg-gray-900 text-white min-h-screen font-sans bg-cover bg-fixed" style={{backgroundImage: 'url(https://placehold.co/1920x1080/0a101f/1e293b.png?text=.)'}}>
+            {!playerState.playerName && <NameManager />}
             <WelcomeModal />
-            <div className="p-4 sm:p-8 backdrop-blur-md bg-black/30 min-h-screen">
+            <div className={`p-4 sm:p-8 backdrop-blur-md bg-black/30 min-h-screen ${!playerState.playerName ? 'filter blur-md' : ''}`}>
                 <header className="text-center mb-8">
-                    <h1 className="text-4xl sm:text-5xl font-extralight text-teal-200 tracking-wider">未書之經</h1>
-                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v15 (部署最終版)</p>
+                    <div className="flex items-center justify-center">
+                        <h1 className="text-4xl sm:text-5xl font-extralight text-teal-200 tracking-wider">
+                           {playerState.playerName ? `${playerState.playerName}的《未書之經》` : '未書之經'}
+                        </h1>
+                        {playerState.playerName && <NameManager />}
+                    </div>
+                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v16 (玩家命名)</p>
                 </header>
                 <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
                     <div className="lg:col-span-2 space-y-6">
