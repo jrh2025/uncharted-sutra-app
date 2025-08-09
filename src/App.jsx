@@ -109,7 +109,7 @@ const LoadingAnimation = () => {
 const GameStateContext = createContext();
 
 const getInitialPlayerState = () => ({
-    playerName: null, // **新增：玩家名稱**
+    playerName: null,
     skandhas: { rupa: 70, vedana: 50, samjna: 50, samskara: 40, vijnana: 50 },
     karma: { greed: 50, hatred: 40, delusion: 60 },
     bodhisattvaPath: { stage: '十信位', progress: 0 },
@@ -136,7 +136,7 @@ const PlayerStateProvider = ({ children }) => {
                     const savedState = JSON.parse(savedStateJSON);
                     savedState.loginCount = (savedState.loginCount || 1) + 1;
                     setPlayerState(savedState);
-                    if (savedState.playerName) { // 如果已有名字，顯示回歸歡迎
+                    if (savedState.playerName) {
                         setShowWelcomeModal(true);
                     }
                 } catch (e) {
@@ -230,7 +230,7 @@ const PlayerStateProvider = ({ children }) => {
             : null;
         const newInitialState = {
             ...getInitialPlayerState(),
-            playerName: null, // **新增：重啟人生時清空名字**
+            playerName: null,
             skandhas: { rupa: Math.round(newSkandhas.rupa), vedana: Math.round(newSkandhas.vedana), samjna: Math.round(newSkandhas.samjna), samskara: Math.round(newSkandhas.samskara), vijnana: Math.round(newSkandhas.vijnana) },
             karma: { greed: Math.round(newKarma.greed), hatred: Math.round(newKarma.hatred), delusion: Math.round(newKarma.delusion) },
             thoughts: { equipped: [], available: carriedOverThought ? [carriedOverThought] : [], synthesized: [] },
@@ -445,7 +445,7 @@ const ThoughtCabinet = React.memo(() => {
 });
 
 
-// 5. 因果劇場 (KarmicTheater) - v8 多元時事
+// 5. 因果劇場 (KarmicTheater) - v17 廣闊因緣
 const KarmicTheater = () => {
     const { apiKey, applyEffects, playerState, addNewThought } = usePlayerState();
     const [scenario, setScenario] = useState(null);
@@ -454,6 +454,17 @@ const KarmicTheater = () => {
     const [error, setError] = useState(null);
     const [newThoughtFeedback, setNewThoughtFeedback] = useState(null);
     const [recentThemes, setRecentThemes] = useState([]);
+
+    const karmaThemes = {
+        "個人層面": ["身體健康", "心理健康", "生活條件"],
+        "情感與人際關係": ["家庭關係", "愛情關係", "朋友與社交"],
+        "教育與成長": ["學業壓力", "未來方向", "學校霸凌"],
+        "工作與經濟": ["失業裁員", "職場壓力", "收入與債務"],
+        "法律與安全": ["犯罪受害", "法律糾紛", "網路詐騙"],
+        "社會與文化": ["社會階級", "歧視與偏見", "假新聞"],
+        "國家層面": ["經濟衰退", "政治腐敗", "社會動盪"],
+        "全球層面": ["戰爭衝突", "氣候變遷", "大流行疾病", "AI倫理"],
+    };
 
     const fetchNewScenario = useCallback(async () => {
         if(!playerState || !apiKey) {
@@ -467,36 +478,28 @@ const KarmicTheater = () => {
         setFeedback(null);
         setNewThoughtFeedback(null);
 
-        const themes = [
-            { name: '微觀個人', detail: '關於個人習慣、內心掙扎、或一個無人知曉的選擇' },
-            { name: '人際關係', detail: '關於家庭、朋友、或愛情中的互動與矛盾' },
-            { name: '職場倫理', detail: '關於工作場合的公平、誠信與利益衝突' },
-            { name: '社會參與', detail: '關於社區議題、公共政策或對弱勢群體的態度' },
-            { name: '科技倫理', detail: '關於人工智慧、社交媒體、或新科技帶來的道德挑戰' },
-            { name: '環境永續', detail: '關於個人消費選擇對環境的影響或對氣候變遷的看法' },
-            { name: '全球時事', detail: '關於國際衝突、經濟不平等或全球性危機的抽象思辨' },
-        ];
-        
-        let availableThemes = themes.filter(t => !recentThemes.includes(t.name));
-        if (availableThemes.length === 0) {
-            availableThemes = themes;
+        // **核心改動：多層次隨機主題**
+        const mainThemes = Object.keys(karmaThemes);
+        let availableMainThemes = mainThemes.filter(t => !recentThemes.includes(t));
+        if (availableMainThemes.length === 0) {
+            availableMainThemes = mainThemes;
             setRecentThemes([]);
         }
-
-        const selectedTheme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
+        const selectedMainTheme = availableMainThemes[Math.floor(Math.random() * availableMainThemes.length)];
+        const subThemes = karmaThemes[selectedMainTheme];
+        const selectedSubTheme = subThemes[Math.floor(Math.random() * subThemes.length)];
         
         setRecentThemes(prev => {
-            const updated = [...prev, selectedTheme.name];
-            if (updated.length > 3) return updated.slice(1);
+            const updated = [...prev, selectedMainTheme];
+            if (updated.length > 4) return updated.slice(1);
             return updated;
         });
 
         const prompt = `你是一位充滿佛學智慧的遊戲設計師。請為一款名為《未書之經》的深度哲學遊戲，創造一個道德兩難情境。
 
-        核心主題：**${selectedTheme.name}**
-        具體方向：**${selectedTheme.detail}**
+        核心主題：**${selectedMainTheme} - ${selectedSubTheme}**
 
-        請基於此主題，設計一個中性且具現實感的情境，可結合當代時事，避免過於戲劇化或善惡分明。提供3到4個反映不同心態的玩家選項。為每個選項，分析其動機，並評估其對佛教「三毒」（貪、瞋、癡）及「五蘊」的影響（數值在-15到+15之間）。
+        請基於此精準主題，設計一個中性且具現實感的情境，可結合當代時事，避免過於戲劇化或善惡分明。提供3到4個反映不同心態的玩家選項。為每個選項，分析其動機，並評估其對佛教「三毒」（貪、瞋、癡）及「五蘊」的影響（數值在-15到+15之間）。
 
         **重要**：如果情境適合，請在提問中自然地融入玩家的名字「${playerState.playerName || '旅人'}」。
 
@@ -1093,7 +1096,7 @@ function AppContent() {
                         </h1>
                         {playerState.playerName && <NameManager />}
                     </div>
-                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v16 (玩家命名)</p>
+                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v17 (廣闊因緣)</p>
                 </header>
                 <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
                     <div className="lg:col-span-2 space-y-6">
