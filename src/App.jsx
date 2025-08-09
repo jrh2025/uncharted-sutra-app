@@ -151,9 +151,19 @@ const PlayerStateProvider = ({ children }) => {
             if (savedStateJSON) {
                 try {
                     const savedState = JSON.parse(savedStateJSON);
-                    savedState.loginCount = (savedState.loginCount || 1) + 1;
-                    setPlayerState(savedState);
-                    if (savedState.playerName) {
+                    const initialState = getInitialPlayerState();
+                    // **核心修正：合併舊存檔與新結構，確保所有屬性存在**
+                    const mergedState = {
+                        ...initialState,
+                        ...savedState,
+                        skandhas: { ...initialState.skandhas, ...savedState.skandhas },
+                        karma: { ...initialState.karma, ...savedState.karma },
+                        bodhisattvaPath: { ...initialState.bodhisattvaPath, ...savedState.bodhisattvaPath },
+                        thoughts: { ...initialState.thoughts, ...savedState.thoughts },
+                    };
+                    mergedState.loginCount = (savedState.loginCount || 1) + 1;
+                    setPlayerState(mergedState);
+                    if (mergedState.playerName) {
                         setShowWelcomeModal(true);
                     }
                 } catch (e) {
