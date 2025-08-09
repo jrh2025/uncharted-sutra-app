@@ -2,7 +2,7 @@ import React, { useState, createContext, useContext, useMemo, useCallback, useEf
 
 // --- 模擬圖示 (使用 SVG) ---
 const BrainIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-brain-circuit"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 0 0 9 22a4 4 0 0 0 5-5.172" /><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 0 1 15 22a4 4 0 0 1-5-5.172" /><path d="M12 5a3 3 0 0 0-3 3" /><path d="M12 5a3 3 0 0 1 3 3" /><path d="M12 8v4" /><path d="M12 17v-1" /><path d="m15 13-3 1-3-1" /><path d="M9 9a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Z" /><path d="M15 9a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Z" /><path d="M6.5 12.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Z" /><path d="M18.5 12.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Z" /><path d="M9 15a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Z" /><path d="M15 15a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Z" /></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-brain-circuit"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 0 0 9 22a4 4 0 0 0 5-5.172" /><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 0 1 15 22a4 4 0 0 1-5-5-1.72" /><path d="M12 5a3 3 0 0 0-3 3" /><path d="M12 5a3 3 0 0 1 3 3" /><path d="M12 8v4" /><path d="M12 17v-1" /><path d="m15 13-3 1-3-1" /><path d="M9 9a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Z" /><path d="M15 9a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Z" /><path d="M6.5 12.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Z" /><path d="M18.5 12.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Z" /><path d="M9 15a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Z" /><path d="M15 15a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Z" /></svg>
 );
 const SparklesIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
@@ -108,23 +108,41 @@ const LoadingAnimation = () => {
 // --- 遊戲狀態管理 (Context API) ---
 const GameStateContext = createContext();
 
+// **核心改動：菩薩道階位資料庫**
+const BODHISATTVA_PATH_CONFIG = [
+    { name: '十信位', focus: '建立信心與正見', subStages: ['信心', '念心', '精進心', '慧心', '定心', '不退心', '護法心', '迴向心', '戒心', '願心'], progressPerAction: 15 },
+    { name: '十住位', focus: '安住於菩提心', subStages: ['發心住', '治地住', '修行住', '生貴住', '方便具足住', '正心住', '不退住', '童真住', '法王子住', '灌頂住'], progressPerAction: 10 },
+    { name: '十行位', focus: '廣行利他', subStages: ['歡喜行', '饒益行', '無瞋行', '無盡行', '離癡亂行', '善現行', '無著行', '尊重行', '善法行', '真實行'], progressPerAction: 8 },
+    { name: '十迴向位', focus: '功德迴向眾生', subStages: ['救護眾生離眾生相迴向', '不壞迴向', '等一切佛迴向', '至一切處迴向', '無盡功德藏迴向', '隨順平等善根迴向', '隨順等觀一切眾生迴向', '真如相迴向', '無縛無著解脫迴向', '入法界無量迴向'], progressPerAction: 5 },
+    { name: '十地位', focus: '圓滿智慧功德', subStages: ['歡喜地', '離垢地', '發光地', '焰慧地', '極難勝地', '現前地', '遠行地', '不動地', '善慧地', '法雲地'], progressPerAction: 3 },
+    { name: '等覺', focus: '等同佛之覺悟', subStages: ['等覺菩薩'], progressPerAction: 1 },
+    { name: '妙覺', focus: '究竟圓滿成佛', subStages: ['妙覺菩薩'], progressPerAction: 0 },
+];
+const STAGES = BODHISATTVA_PATH_CONFIG.map(p => p.name);
+
 const getInitialPlayerState = () => ({
     playerName: null,
     skandhas: { rupa: 70, vedana: 50, samjna: 50, samskara: 40, vijnana: 50 },
     karma: { greed: 50, hatred: 40, delusion: 60 },
-    bodhisattvaPath: { stage: '十信位', progress: 0 },
+    bodhisattvaPath: {
+        stageIndex: 0,
+        subStageIndex: 0,
+        progress: 0,
+    },
     thoughts: {
         equipped: [],
         available: [],
         synthesized: []
     },
-    loginCount: 1
+    loginCount: 1,
+    endGame: null,
 });
 
 const PlayerStateProvider = ({ children }) => {
     const [playerState, setPlayerState] = useState(null);
     const [apiKey, setApiKey] = useState(null);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [showProgressionModal, setShowProgressionModal] = useState(null);
 
     useEffect(() => {
         const storedKey = localStorage.getItem('gemini_api_key');
@@ -161,20 +179,95 @@ const PlayerStateProvider = ({ children }) => {
         setPlayerState(prev => ({ ...prev, playerName: name }));
     }, []);
 
+    const checkBodhisattvaProgression = useCallback(() => {
+        setPlayerState(prev => {
+            const { karma, bodhisattvaPath } = prev;
+            const newState = { ...prev };
+            const { stageIndex, subStageIndex } = bodhisattvaPath;
+            const stageConfig = BODHISATTVA_PATH_CONFIG[stageIndex];
+            
+            // **檢查降級**
+            let didRegress = false;
+            if (stageIndex > 0) {
+                const avgPoison = (karma.greed + karma.hatred + karma.delusion) / 3;
+                if (avgPoison > 75) {
+                    didRegress = true;
+                    if (subStageIndex > 0) {
+                        newState.bodhisattvaPath.subStageIndex -= 1;
+                        newState.bodhisattvaPath.progress = 50;
+                    } else {
+                        newState.bodhisattvaPath.stageIndex -= 1;
+                        const prevStageConfig = BODHISATTVA_PATH_CONFIG[stageIndex - 1];
+                        newState.bodhisattvaPath.subStageIndex = prevStageConfig.subStages.length - 1;
+                        newState.bodhisattvaPath.progress = 50;
+                    }
+                    setShowProgressionModal({ from: `${stageConfig.name} - ${stageConfig.subStages[subStageIndex]}`, to: `${BODHISATTVA_PATH_CONFIG[newState.bodhisattvaPath.stageIndex].name} - ${BODHISATTVA_PATH_CONFIG[newState.bodhisattvaPath.stageIndex].subStages[newState.bodhisattvaPath.subStageIndex]}`, type: 'regression' });
+                }
+            }
+
+            // **檢查晉升**
+            if (!didRegress && bodhisattvaPath.progress >= 100) {
+                if (subStageIndex < stageConfig.subStages.length - 1) {
+                    newState.bodhisattvaPath.subStageIndex += 1;
+                    newState.bodhisattvaPath.progress = 0;
+                } else if (stageIndex < STAGES.length - 1) {
+                    newState.bodhisattvaPath.stageIndex += 1;
+                    newState.bodhisattvaPath.subStageIndex = 0;
+                    newState.bodhisattvaPath.progress = 0;
+                }
+                
+                const newStageIndex = newState.bodhisattvaPath.stageIndex;
+                const newSubStageIndex = newState.bodhisattvaPath.subStageIndex;
+
+                if(newStageIndex === STAGES.length - 1) { // 妙覺
+                    newState.endGame = 'pending';
+                } else {
+                    setShowProgressionModal({ from: `${stageConfig.name} - ${stageConfig.subStages[subStageIndex]}`, to: `${BODHISATTVA_PATH_CONFIG[newStageIndex].name} - ${BODHISATTVA_PATH_CONFIG[newStageIndex].subStages[newSubStageIndex]}`, type: 'promotion' });
+                }
+            }
+            
+            return newState;
+        });
+    }, []);
+
     const applyEffects = useCallback((effects) => {
         if (!effects) return;
         setPlayerState(prev => {
             const newState = JSON.parse(JSON.stringify(prev));
+            const { bodhisattvaPath, karma } = newState;
+            const stageConfig = BODHISATTVA_PATH_CONFIG[bodhisattvaPath.stageIndex];
+            let progressPoints = 0;
+
             if (effects.karma) {
+                const greedChange = effects.karma.greed || 0;
+                const hatredChange = effects.karma.hatred || 0;
+                const delusionChange = effects.karma.delusion || 0;
+
+                // 根據當前位階的修行重點，給予不同的進度加成
+                switch(bodhisattvaPath.stageIndex) {
+                    case 0: // 十信位 (慧)
+                        if (delusionChange < 0) progressPoints += Math.abs(delusionChange);
+                        break;
+                    case 2: // 十行位 (無瞋)
+                        if (hatredChange < 0) progressPoints += Math.abs(hatredChange) * 1.5;
+                        break;
+                    case 3: // 十迴向位 (無貪)
+                        if (greedChange < 0) progressPoints += Math.abs(greedChange) * 1.5;
+                        break;
+                    default: // 其他
+                        if (greedChange < 0) progressPoints += Math.abs(greedChange) * 0.5;
+                        if (hatredChange < 0) progressPoints += Math.abs(hatredChange) * 0.5;
+                        if (delusionChange < 0) progressPoints += Math.abs(delusionChange) * 0.5;
+                        break;
+                }
+                
                 for (const [key, value] of Object.entries(effects.karma)) {
                     if (newState.karma[key] !== undefined) newState.karma[key] = Math.max(0, Math.min(100, newState.karma[key] + value));
                 }
             }
-            if (effects.skandhas) {
-                for (const [key, value] of Object.entries(effects.skandhas)) {
-                     if (newState.skandhas[key] !== undefined) newState.skandhas[key] = Math.max(0, Math.min(100, newState.skandhas[key] + value));
-                }
-            }
+            
+            newState.bodhisattvaPath.progress = Math.min(100, bodhisattvaPath.progress + progressPoints * (stageConfig.progressPerAction / 10));
+
             return newState;
         });
     }, []);
@@ -209,9 +302,10 @@ const PlayerStateProvider = ({ children }) => {
             newState.thoughts.synthesized.push({ from: [thoughtId1, thoughtId2], to: newId });
             return newState;
         });
-    }, []);
+        checkBodhisattvaProgression();
+    }, [checkBodhisattvaProgression]);
     
-    const reincarnate = useCallback(() => {
+    const reincarnate = useCallback((newGamePlus = false) => {
         const prevState = playerState;
         const newKarma = {
             greed: Math.max(10, 50 - Math.floor((100 - prevState.karma.greed) / 3) + (Math.random() * 30 - 15)),
@@ -225,20 +319,23 @@ const PlayerStateProvider = ({ children }) => {
             samskara: Math.max(20, 40 + (Math.random() * 20 - 10)),
             vijnana: 50,
         };
-        const carriedOverThought = prevState.thoughts.equipped.length > 0 && Math.random() < 0.2
-            ? { ...prevState.thoughts.equipped[Math.floor(Math.random() * prevState.thoughts.equipped.length)], internalizing: false, progress: 0 }
-            : null;
+        
+        let newThoughts = { equipped: [], available: [], synthesized: [] };
+        if (newGamePlus) {
+            newThoughts.equipped.push({ id: 999, name: '菩薩歸來', internalizing: false, progress: 100, effect: '所有善行的業力淨化效果微幅提升。', description: '您已圓滿覺悟，但選擇重返世間，行菩薩道。' });
+        }
+
         const newInitialState = {
             ...getInitialPlayerState(),
             playerName: null,
             skandhas: { rupa: Math.round(newSkandhas.rupa), vedana: Math.round(newSkandhas.vedana), samjna: Math.round(newSkandhas.samjna), samskara: Math.round(newSkandhas.samskara), vijnana: Math.round(newSkandhas.vijnana) },
             karma: { greed: Math.round(newKarma.greed), hatred: Math.round(newKarma.hatred), delusion: Math.round(newKarma.delusion) },
-            thoughts: { equipped: [], available: carriedOverThought ? [carriedOverThought] : [], synthesized: [] },
+            thoughts: newThoughts,
         };
         return newInitialState;
     }, [playerState]);
 
-    const value = useMemo(() => ({ playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal, setPlayerName }), [playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal, setPlayerName]);
+    const value = useMemo(() => ({ playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal, setPlayerName, checkBodhisattvaProgression, showProgressionModal, setShowProgressionModal }), [playerState, setPlayerState, apiKey, setApiKey, applyEffects, equipThought, addNewThought, synthesizeThoughts, reincarnate, showWelcomeModal, setShowWelcomeModal, setPlayerName, checkBodhisattvaProgression, showProgressionModal, setShowProgressionModal]);
 
     return <GameStateContext.Provider value={value}>{children}</GameStateContext.Provider>;
 };
@@ -343,18 +440,40 @@ const KarmaDashboard = React.memo(() => {
 const BodhisattvaPath = React.memo(() => {
     const { playerState } = usePlayerState();
     if (!playerState) return null;
-    const { stage, progress } = playerState.bodhisattvaPath;
-    const stages = ['十信位', '十住位', '十行位', '十迴向位', '十地位'];
-    const currentStageIndex = stages.indexOf(stage);
+    const { stageIndex, subStageIndex, progress } = playerState.bodhisattvaPath;
+    const stage = BODHISATTVA_PATH_CONFIG[stageIndex];
+    const subStage = stage.subStages[subStageIndex];
+    
+    // 計算總體進度
+    const totalSubStages = BODHISATTVA_PATH_CONFIG.reduce((acc, s) => acc + s.subStages.length, 0);
+    let completedSubStages = 0;
+    for(let i = 0; i < stageIndex; i++) {
+        completedSubStages += BODHISATTVA_PATH_CONFIG[i].subStages.length;
+    }
+    completedSubStages += subStageIndex;
+    const overallProgress = ((completedSubStages + (progress / 100)) / totalSubStages) * 100;
+
     return (
         <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg backdrop-blur-sm border border-gray-700">
             <h2 className="text-2xl font-light text-teal-200 mb-4">菩薩道階位</h2>
             <div className="relative">
-                <div className="flex justify-between items-center text-xs text-gray-400">{stages.map(s => <span key={s}>{s}</span>)}</div>
-                <div className="w-full bg-gray-700 rounded-full h-2.5 my-2">
-                    <div className="bg-gradient-to-r from-teal-400 to-cyan-400 h-2.5 rounded-full" style={{ width: `${(currentStageIndex * 25) + (progress * 0.25)}%`, transition: 'width 0.5s' }}></div>
+                <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                    <span>凡夫位</span>
+                    <span>聖位</span>
                 </div>
-                <div className="text-center mt-2"><p className="text-lg text-white">當前境界：<span className="font-bold text-teal-300">{stage}</span></p></div>
+                <div className="w-full bg-gray-700 rounded-full h-2.5 mb-2">
+                    <div className="bg-gradient-to-r from-teal-400 to-cyan-400 h-2.5 rounded-full" style={{ width: `${overallProgress}%`, transition: 'width 0.5s' }}></div>
+                </div>
+                
+                <div className="text-center mt-4">
+                    <p className="text-lg text-white">
+                        當前境界：<span className="font-bold text-teal-300">{stage.name} - {subStage}</span>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">{stage.focus}</p>
+                </div>
+                 <div className="w-full bg-gray-600 rounded-full h-2.5 mt-2">
+                    <div className="bg-cyan-500 h-2.5 rounded-full" style={{ width: `${progress}%`, transition: 'width 0.5s' }}></div>
+                </div>
             </div>
         </div>
     );
@@ -362,7 +481,7 @@ const BodhisattvaPath = React.memo(() => {
 
 // --- 思想櫥櫃 (v4) ---
 const ThoughtCabinet = React.memo(() => {
-    const { playerState, equipThought, synthesizeThoughts } = usePlayerState();
+    const { playerState, setPlayerState, equipThought, synthesizeThoughts, checkBodhisattvaProgression } = usePlayerState();
     if (!playerState) return null;
     const { equipped, available } = playerState.thoughts;
 
@@ -396,6 +515,19 @@ const ThoughtCabinet = React.memo(() => {
         synthesizeThoughts(conflictPair[0], conflictPair[1], newSynthesizedThought);
     };
 
+    const handleInternalize = (thoughtId) => {
+        setPlayerState(prev => {
+            const newState = JSON.parse(JSON.stringify(prev));
+            const thought = newState.thoughts.equipped.find(t => t.id === thoughtId);
+            if (thought) {
+                thought.internalizing = false;
+                thought.progress = 100;
+            }
+            return newState;
+        });
+        checkBodhisattvaProgression();
+    };
+
     return (
         <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg backdrop-blur-sm border border-gray-700 flex-1">
             <h2 className="text-2xl font-light text-teal-200 mb-4 flex items-center"><BrainIcon /> <span className="ml-2">思想櫥櫃</span></h2>
@@ -419,7 +551,11 @@ const ThoughtCabinet = React.memo(() => {
                         <div key={thought.id} className={`bg-gray-900/70 p-3 rounded-lg border ${isConflicting(thought.id) ? 'border-red-500 animate-pulse' : 'border-transparent'}`}>
                             <div className="flex justify-between items-center">
                                 <span className="font-bold text-white">{thought.name}</span>
-                                <span className={`text-xs px-2 py-1 rounded-full ${thought.internalizing ? 'bg-yellow-500 text-black' : 'bg-green-500 text-black'}`}>{thought.internalizing ? '內化中' : '已完成'}</span>
+                                {thought.internalizing ? (
+                                    <button onClick={() => handleInternalize(thought.id)} className="text-xs px-2 py-1 rounded-full bg-yellow-500 hover:bg-yellow-400 text-black">完成內化</button>
+                                ) : (
+                                    <span className="text-xs px-2 py-1 rounded-full bg-green-500 text-black">已完成</span>
+                                )}
                             </div>
                             <p className="text-sm text-gray-400 mt-1 italic">效果：{thought.effect}</p>
                         </div>
@@ -447,7 +583,7 @@ const ThoughtCabinet = React.memo(() => {
 
 // 5. 因果劇場 (KarmicTheater) - v17 廣闊因緣
 const KarmicTheater = () => {
-    const { apiKey, applyEffects, playerState, addNewThought } = usePlayerState();
+    const { apiKey, applyEffects, playerState, addNewThought, checkBodhisattvaProgression } = usePlayerState();
     const [scenario, setScenario] = useState(null);
     const [feedback, setFeedback] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -478,7 +614,6 @@ const KarmicTheater = () => {
         setFeedback(null);
         setNewThoughtFeedback(null);
 
-        // **核心改動：多層次隨機主題**
         const mainThemes = Object.keys(karmaThemes);
         let availableMainThemes = mainThemes.filter(t => !recentThemes.includes(t));
         if (availableMainThemes.length === 0) {
@@ -505,7 +640,7 @@ const KarmicTheater = () => {
 
         請務必嚴格遵循以下的JSON格式輸出，不得包含任何額外文字。
 
-        玩家當前狀態（供參考）：貪：${playerState.karma.greed}, 瞋：${playerState.karma.hatred}, 癡：${playerState.karma.delusion}, 階位：${playerState.bodhisattvaPath.stage}。`;
+        玩家當前狀態（供參考）：貪：${playerState.karma.greed}, 瞋：${playerState.karma.hatred}, 癡：${playerState.karma.delusion}, 階位：${BODHISATTVA_PATH_CONFIG[playerState.bodhisattvaPath.stageIndex].name}。`;
         
         const schema = {
             type: "OBJECT",
@@ -632,6 +767,7 @@ const KarmicTheater = () => {
         setScenario(null);
         setFeedback(null);
         setNewThoughtFeedback(null);
+        checkBodhisattvaProgression();
     };
 
     return (
@@ -1062,6 +1198,121 @@ const NameManager = () => {
     );
 };
 
+// **新增：階位提升祝賀元件**
+const ProgressionModal = () => {
+    const { showProgressionModal, setShowProgressionModal, apiKey } = usePlayerState();
+    const [insight, setInsight] = useState("");
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (showProgressionModal) {
+            const fetchInsight = async () => {
+                setLoading(true);
+                const { from, to, type } = showProgressionModal;
+                const prompt = type === 'promotion'
+                    ? `你是一位充滿佛學智慧的禪師。一位修行者剛剛在心靈旅程中取得了突破，從「${from}」晉升到了「${to}」。請為他撰寫一段簡短（約2-3句話）而富有啟發性的「智慧開示」，以鼓勵他繼續前行。請直接輸出開示的文字，不要有任何額外的標籤或解釋。`
+                    : `你是一位充滿佛學智慧的禪師。一位修行者因為近期的行為，心生煩惱，道心有所退轉，從「${from}」降級到了「${to}」。請為他撰寫一段簡短（約2-3句話）而溫和的「警醒之語」，提醒他觀照內心，但不要過於苛責。請直接輸出開示的文字，不要有任何額外的標籤或解釋。`;
+                
+                try {
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
+                        setInsight(result.candidates[0].content.parts[0].text);
+                    } else {
+                        setInsight(type === 'promotion' ? "每一次的放下，都是一次拾起。你的道路，正變得愈發清晰。" : "一時的迷霧，是為了讓你看清前路。重新安住，再次前行。");
+                    }
+                } catch (error) {
+                    console.error("生成智慧開示失敗:", error);
+                    setInsight(type === 'promotion' ? "如實觀照，步履不停，前方的風景將因你的心而顯現。" : "退步原來是向前。觀照此時的煩惱，它亦是修行的資糧。");
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchInsight();
+        }
+    }, [showProgressionModal, apiKey]);
+
+    if (!showProgressionModal) return null;
+
+    const isPromotion = showProgressionModal.type === 'promotion';
+
+    return (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div className={`bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md text-center border ${isPromotion ? 'border-teal-500/30' : 'border-yellow-500/30'} mx-4`}>
+                <h3 className={`text-2xl font-light ${isPromotion ? 'text-teal-200' : 'text-yellow-200'} mb-2`}>
+                    {isPromotion ? '境界提升' : '道心退轉'}
+                </h3>
+                <p className="text-gray-400 mb-4">
+                    您已從 {showProgressionModal.from} {isPromotion ? '晉升' : '回歸'}至 <span className={`font-bold ${isPromotion ? 'text-teal-300' : 'text-yellow-300'}`}>{showProgressionModal.to}</span>
+                </p>
+                <div className="bg-black/30 p-4 rounded-lg min-h-[80px] flex items-center justify-center">
+                    {loading ? (
+                        <div className="text-gray-400 animate-pulse">正在接收智慧開示...</div>
+                    ) : (
+                        <p className="text-gray-300 italic whitespace-pre-wrap">"{insight}"</p>
+                    )}
+                </div>
+                <button onClick={() => setShowProgressionModal(null)} className={`mt-6 w-full px-6 py-3 rounded-lg ${isPromotion ? 'bg-teal-600 hover:bg-teal-500' : 'bg-yellow-600 hover:bg-yellow-500'} transition-colors`}>
+                    {isPromotion ? '繼續前行' : '重新安住'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// **新增：終局抉擇元件**
+const EndgameModal = () => {
+    const { playerState, setPlayerState, reincarnate } = usePlayerState();
+
+    const handleChoice = (isReturning) => {
+        if (isReturning) {
+            const newState = reincarnate(true); // 帶有菩薩願力重啟
+            setPlayerState(newState);
+        } else {
+            // 究竟涅槃，徹底重置
+            localStorage.removeItem(`sutra_save_${localStorage.getItem('gemini_api_key')}`);
+            setPlayerState({ ...getInitialPlayerState(), endGame: 'nirvana' });
+        }
+    };
+
+    if (!playerState || playerState.endGame !== 'pending') return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] backdrop-blur-lg">
+            <div className="bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-2xl w-full text-center border border-teal-500/30 mx-4">
+                <h3 className="text-3xl font-light text-teal-200 mb-4 text-teal-glow">妙覺圓滿</h3>
+                <p className="text-gray-300 mb-8">
+                    您已行過五十二階位，照見五蘊皆空，度一切苦厄。三毒已息，業力之流澄澈無礙。
+                    <br/>
+                    此刻，您立於終點，亦是新的起點。請做出您最終的抉擇：
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-gray-800/50 p-6 rounded-lg border border-gray-700">
+                        <h4 className="text-xl text-cyan-300 mb-3">究竟涅槃</h4>
+                        <p className="text-sm text-gray-400 mb-4">
+                            斷盡一切煩惱，不再受生死輪迴之苦，進入不生不滅的永恆寂靜。此世的修行將化為深厚的福德，澤潤未來的因緣。
+                        </p>
+                        <button onClick={() => handleChoice(false)} className="w-full px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors">
+                            進入寂靜
+                        </button>
+                    </div>
+                    <div className="bg-gray-800/50 p-6 rounded-lg border border-gray-700">
+                        <h4 className="text-xl text-yellow-300 mb-3">菩薩歸來</h4>
+                        <p className="text-sm text-gray-400 mb-4">
+                            雖已圓滿，然觀見眾生仍在苦海，遂發大悲心，乘願再來。您將帶著此世的智慧，重入輪迴，以新的身份，繼續行菩薩道。
+                        </p>
+                        <button onClick={() => handleChoice(true)} className="w-full px-6 py-3 rounded-lg bg-yellow-600 hover:bg-yellow-500 transition-colors">
+                            重返世間
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // --- 主應用程式 ---
 export default function App() {
@@ -1084,11 +1335,23 @@ function AppContent() {
         );
     }
     
+    if (playerState.endGame === 'nirvana') {
+        return (
+            <div className="bg-black text-white min-h-screen flex items-center justify-center">
+                <div className="text-center p-8">
+                    <h1 className="text-4xl font-light text-gray-300 animate-pulse">...</h1>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-gray-900 text-white min-h-screen font-sans bg-cover bg-fixed" style={{backgroundImage: 'url(https://placehold.co/1920x1080/0a101f/1e293b.png?text=.)'}}>
+            <EndgameModal />
             {!playerState.playerName && <NameManager />}
             <WelcomeModal />
-            <div className={`p-4 sm:p-8 backdrop-blur-md bg-black/30 min-h-screen ${!playerState.playerName ? 'filter blur-md' : ''}`}>
+            <ProgressionModal />
+            <div className={`p-4 sm:p-8 backdrop-blur-md bg-black/30 min-h-screen ${!playerState.playerName || playerState.endGame ? 'filter blur-md' : ''}`}>
                 <header className="text-center mb-8">
                     <div className="flex items-center justify-center">
                         <h1 className="text-4xl sm:text-5xl font-extralight text-teal-200 tracking-wider">
@@ -1096,7 +1359,7 @@ function AppContent() {
                         </h1>
                         {playerState.playerName && <NameManager />}
                     </div>
-                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v17 (廣闊因緣)</p>
+                    <p className="text-cyan-300/80 mt-2">互動式遊戲設計原型 v19 (完整菩薩道)</p>
                 </header>
                 <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
                     <div className="lg:col-span-2 space-y-6">
