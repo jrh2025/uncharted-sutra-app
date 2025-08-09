@@ -139,32 +139,40 @@ const getInitialPlayerState = () => ({
 
 const PlayerStateProvider = ({ children }) => {
     const [playerState, setPlayerState] = useState(null);
-    const [apiKey, setApiKey] = useState(""); // **核心修正：初始化為空字串**
+    const [apiKey, setApiKey] = useState(null);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [showProgressionModal, setShowProgressionModal] = useState(null);
 
     useEffect(() => {
-        // **核心修正：簡化啟動邏輯，專為預覽環境設計**
-        const savedStateJSON = localStorage.getItem('sutra_save_local_preview');
-        if (savedStateJSON) {
-            try {
-                const savedState = JSON.parse(savedStateJSON);
-                savedState.loginCount = (savedState.loginCount || 1) + 1;
-                setPlayerState(savedState);
-            } catch (e) {
+        const storedKey = localStorage.getItem('gemini_api_key');
+        if (storedKey) {
+            setApiKey(storedKey);
+            const savedStateJSON = localStorage.getItem(`sutra_save_${storedKey}`);
+            if (savedStateJSON) {
+                try {
+                    const savedState = JSON.parse(savedStateJSON);
+                    savedState.loginCount = (savedState.loginCount || 1) + 1;
+                    setPlayerState(savedState);
+                    if (savedState.playerName) {
+                        setShowWelcomeModal(true);
+                    }
+                } catch (e) {
+                    console.error("解析存檔失敗:", e);
+                    setPlayerState(getInitialPlayerState());
+                }
+            } else {
                 setPlayerState(getInitialPlayerState());
             }
         } else {
             setPlayerState(getInitialPlayerState());
         }
-        setShowWelcomeModal(true);
     }, []);
 
     useEffect(() => {
-        if (playerState) {
-            localStorage.setItem('sutra_save_local_preview', JSON.stringify(playerState));
+        if (playerState && apiKey) {
+            localStorage.setItem(`sutra_save_${apiKey}`, JSON.stringify(playerState));
         }
-    }, [playerState]);
+    }, [playerState, apiKey]);
 
     const setPlayerName = useCallback((name) => {
         setPlayerState(prev => ({ ...prev, playerName: name }));
